@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TweetListner {
 	
-	@Autowired
+	/*@Autowired
 	Tweets tweetsDao;
 	
 	@KafkaListener(topics = "tweet" , groupId = "tweet_group",containerFactory = "kafkaTweetListenerContainerFactory")
@@ -22,6 +22,6 @@ public class TweetListner {
 		tweetsDao.save(tweet);
 		log.info("Exiting consume tweets method in llistner");
 		
-	}
+	}*/
 
 }
