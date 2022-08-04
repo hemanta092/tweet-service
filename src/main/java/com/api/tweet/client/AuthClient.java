@@ -3,7 +3,9 @@ package com.api.tweet.client;
 import java.util.List;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.api.tweet.model.Users;
@@ -24,4 +26,10 @@ public interface AuthClient {
 	
 	@GetMapping(value="/getAllUsers")
 	public List<Users> getAllUsers(@RequestHeader("Authorization") String token);
+	
+	@GetMapping(value="/searchByUserName/{userName}")
+	public List<Users> searchByUserName(@RequestHeader("Authorization") String token,
+			@PathVariable (name ="userName") String userName);
+	
+	
 }

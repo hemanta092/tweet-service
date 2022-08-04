@@ -9,8 +9,8 @@ import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.api.tweet.client.AuthClient;
 import com.api.tweet.entity.Tweet;
-import com.api.tweet.entity.TweetReply;
 import com.api.tweet.model.ReplyRequest;
 import com.api.tweet.model.Users;
 import com.api.tweet.model.ValidationRespose;
@@ -31,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/tweet")
 @Slf4j
-@CrossOrigin(origins = "*", allowedHeaders = "*")
+@CrossOrigin
 public class TweetController {
 	
 	@Autowired
@@ -47,7 +46,22 @@ public class TweetController {
 		log.info("token ="+token);
 		log.info("Exiting getAllTweets controller method.");
 		if(respose.isValid()) {
-			return new ResponseEntity<>(tweetsService.getAllTweets(),HttpStatus.OK);
+			Users user = authClient.getUserByUserId(token);
+			return new ResponseEntity<>(tweetsService.getAllTweets(user.getUserId()),HttpStatus.OK);
+		}
+		return new ResponseEntity<>(new ArrayList<>(),HttpStatus.FORBIDDEN);
+		
+	}
+	
+	@GetMapping(value="/searchByUserName/{userName}")
+	public ResponseEntity<List<Users>> searchByUserName(@RequestHeader(name ="Authorization") String token,
+			@PathVariable(name ="userName") String userName){
+		log.info("Entering searchByUserName controller method.");
+		ValidationRespose respose = authClient.getValidity(token);
+		log.info("token ="+token);
+		log.info("Exiting searchByUserName controller method.");
+		if(respose.isValid()) {
+			return new ResponseEntity<>(authClient.searchByUserName(token, userName),HttpStatus.OK);
 		}
 		return new ResponseEntity<>(new ArrayList<>(),HttpStatus.FORBIDDEN);
 		
@@ -74,7 +88,8 @@ public class TweetController {
 		log.info("token ="+token);
 		log.info("Exiting getTweetsByUserNameRegex controller method.");
 		if(respose.isValid()) {
-			return new ResponseEntity<>(tweetsService.getTweetByUserNameRegex(userName),HttpStatus.OK);
+			Users user = authClient.getUserByUserId(token);
+			return new ResponseEntity<>(tweetsService.getTweetByUserNameRegex(userName,user.getUserId()),HttpStatus.OK);
 		}
 		return new ResponseEntity<>(new ArrayList<>(),HttpStatus.FORBIDDEN);
 		
@@ -88,7 +103,8 @@ public class TweetController {
 		log.info("token ="+token);
 		log.info("Exiting getTweetByUserName controller method.");
 		if(respose.isValid()) {
-			return new ResponseEntity<>(tweetsService.getTweetByUserName(userName),HttpStatus.OK);
+			Users user = authClient.getUserByUserId(token);
+			return new ResponseEntity<>(tweetsService.getTweetByUserName(userName,user.getUserId()),HttpStatus.OK);
 		}
 		return new ResponseEntity<>(new ArrayList<>(),HttpStatus.FORBIDDEN);
 		
@@ -130,7 +146,7 @@ public class TweetController {
 		
 	}
 	@GetMapping(value="/deleteTweet/{tweetId}")
-	public ResponseEntity<Boolean> deleteTweet(@RequestHeader(name ="Authorization") String token,
+	public ResponseEntity<Tweet> deleteTweet(@RequestHeader(name ="Authorization") String token,
 			@PathVariable(name ="tweetId") UUID tweetId){
 		log.info("Entering deleteTweet controller method.");
 		ValidationRespose respose = authClient.getValidity(token);
@@ -141,7 +157,7 @@ public class TweetController {
 			return new ResponseEntity<>(tweetsService.deleteTweet(tweetId),HttpStatus.OK);
 		}
 		log.info("Token Expired: logging off user" );
-		return new ResponseEntity<>(false,HttpStatus.FORBIDDEN);
+		return new ResponseEntity<>(new Tweet(),HttpStatus.FORBIDDEN);
 		
 	}
 	@PostMapping(value="/updateTweet")
@@ -190,7 +206,7 @@ public class TweetController {
 		return new ResponseEntity<>(new Tweet(),HttpStatus.FORBIDDEN);
 	}
 	@PostMapping("/replyTweet/{tweetId}")
-	public ResponseEntity<TweetReply> replyTweet(@RequestHeader(name ="Authorization") String token,
+	public ResponseEntity<Tweet> replyTweet(@RequestHeader(name ="Authorization") String token,
 			@RequestBody ReplyRequest replyRequest,@PathVariable (name ="tweetId") UUID tweetId){
 		log.info("Entering replyTweet controller method.");
 		ValidationRespose respose = authClient.getValidity(token);
@@ -208,6 +224,12 @@ public class TweetController {
 			if(user.isActive())authClient.logout(token);
 		}
 		log.info("User does not exist for the token");
-		return new ResponseEntity<>(new TweetReply(),HttpStatus.FORBIDDEN);
+		return new ResponseEntity<>(new Tweet(),HttpStatus.FORBIDDEN);
+	}
+	
+	@GetMapping("/logout")
+	public ValidationRespose logout(@RequestHeader("Authorization") String token) {
+		log.info("Inside Logout");
+		return authClient.logout(token);
 	}
 }

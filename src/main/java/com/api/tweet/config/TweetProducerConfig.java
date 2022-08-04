@@ -18,7 +18,7 @@ import com.api.tweet.entity.Tweet;
 
 @Configuration
 public class TweetProducerConfig {
-	/*
+	
 	@Value("${kafka.server}")
 	private String serverUrl;
 	
@@ -34,6 +34,8 @@ public class TweetProducerConfig {
 	    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, serverUrl);
 	    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 	    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+	    props.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, 60*30*1000);
+	    
 	    return props;
 	}
 
@@ -41,5 +43,5 @@ public class TweetProducerConfig {
 	public KafkaTemplate<String, Tweet> kafkaTweetTemplate() {
 	    return new KafkaTemplate<>(producerTweetFactory());
 	}
-*/
+
 }

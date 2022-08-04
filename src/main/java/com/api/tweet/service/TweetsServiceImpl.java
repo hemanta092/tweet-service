@@ -37,15 +37,15 @@ public class TweetsServiceImpl implements TweetsService {
 	@Autowired
 	TweetsLike tweetsLikeDao;
 	
-	/*@Autowired
-	KafkaTemplate<String, Tweet> kafkaTemplate;*/
+	@Autowired
+	KafkaTemplate<String, Tweet> kafkaTemplate;
 
 
 	@Override
-	public List<Tweet> getAllTweets() {
+	public List<Tweet> getAllTweets(String userId) {
 		log.info("Entering getAllTweets service method");
 		log.info("Exiting getAllTweets service method");
-		return convert(tweetsDao.findAll());
+		return convert(tweetsDao.findAll(),userId);
 		
 	}
 	
@@ -54,21 +54,21 @@ public class TweetsServiceImpl implements TweetsService {
 	public List<Tweet> getTweetByUserId(String userId) {
 		log.info("Entering getTweetByUserId service method with userid = "+userId);
 		log.info("Exiting getTweetByUserId service method with userid = "+userId);
-		return convert(tweetsDao.findByUserName(userId));
+		return convert(tweetsDao.findByUserName(userId),userId);
 	}
 
 	@Override
-	public List<Tweet> getTweetByUserNameRegex(String nameRegex) {
+	public List<Tweet> getTweetByUserNameRegex(String nameRegex,String userId) {
 		log.info("Entering getTweetByUserNameRegex service method with name Regex = "+nameRegex);
 		log.info("Exiting getTweetByUserNameRegex service method with name Regex = "+nameRegex);
-		return convert(tweetsDao.findByUserNameRegex(nameRegex));
+		return convert(tweetsDao.findByUserNameRegex(nameRegex),userId);
 	}
 
 	@Override
-	public List<Tweet> getTweetByUserName(String name) {
+	public List<Tweet> getTweetByUserName(String name,String userId) {
 		log.info("Entering getTweetByUserName service method with user name ="+name);
 		log.info("Exiting getTweetByUserName service method with user name ="+name);
-		return convert(tweetsDao.findByCreatedByName(name));
+		return convert(tweetsDao.findByCreatedByName(name),userId);
 	}
 
 	@Override
@@ -80,7 +80,6 @@ public class TweetsServiceImpl implements TweetsService {
 		tweet.setTweetLikesCount(0);
 		log.info("tweet :{}",tweet.toString());
 		log.info("user :{}",users.toString());
-		tweetsDao.save(tweet);
 		/*ListenableFuture<SendResult<String, Tweet>> future = kafkaTemplate.send("tweet", tweet);
 		future.addCallback(new ListenableFutureCallback<SendResult<String, Tweet>>() {
 		    @Override
@@ -93,8 +92,9 @@ public class TweetsServiceImpl implements TweetsService {
 		        log.info(ex.getMessage());
 		        throw new TweetAddFailedException();
 		    }
-		});*/
-		log.info("Exiting addTweet service method");
+		});
+		log.info("Exiting addTweet service method");*/
+		tweetsDao.save(tweet);
 		return tweet;
 		
 	}
@@ -118,15 +118,16 @@ public class TweetsServiceImpl implements TweetsService {
 
 	@Override
 	
-	public boolean deleteTweet(UUID tweetId) {
+	public Tweet deleteTweet(UUID tweetId) {
 		log.info("Entering deleteTweet service method");
 		log.info("Exiting deleteTweet service method");
 		try{
+			Tweet tweet = tweetsDao.findById(tweetId).orElse(null);
 			tweetsDao.deleteById(tweetId);
-			return true;
+			return mapTotweet(tweet, null);
 		}catch (Exception e) {
 			log.info("Unexpected Error occured  "+e.getMessage());
-			return false;
+			return null;
 		}
 		
 	}
@@ -151,14 +152,14 @@ public class TweetsServiceImpl implements TweetsService {
 			tweet.setTweetLikesCount(tweet.getTweetLikesCount()-1);
 		}
 		log.info("Exiting likeTweet service method");
-		return mapTotweet(tweetsDao.save(tweet));
+		return mapTotweet(tweetsDao.save(tweet),userId);
 		
 	}
 	
 
 
 	@Override
-	public TweetReply replyTweet(ReplyRequest replyRequest,String userId, UUID tweetId) {
+	public Tweet replyTweet(ReplyRequest replyRequest,String userId, UUID tweetId) {
 		log.info("Entering reply tweet service method");
 		Tweet tweet = tweetsDao.findById(tweetId).orElseThrow(TweetNotFoundException::new);
 		log.info("Tweet fromdb :{}"+ tweet.toString());
@@ -169,44 +170,31 @@ public class TweetsServiceImpl implements TweetsService {
 		reply.setUserId(userId);
 		log.info("Rely{} "+reply);
 		replyList.add(reply);
-		tweetsDao.save(tweet);
-		/*ListenableFuture<SendResult<String, Tweet>> future = kafkaTemplate.send("tweet", tweet);
-		future.addCallback(new ListenableFutureCallback<SendResult<String, Tweet>>() {
-
-		    @Override
-		    public void onSuccess(SendResult<String, Tweet> result) {
-		    	log.info("Successfully published to tweet topic");
-
-		    }
-
-		    @Override
-		    public void onFailure(Throwable ex) {
-		        log.info(ex.getMessage());
-		        throw new TweetAddFailedException();
-		    }
-
-		});*/
-		log.info("Exiting reply tweet service method");
-		return reply;
+		return mapTotweet(tweetsDao.save(tweet),userId);
 		
 	}
 	
-	private Tweet mapTotweet(Tweet tweet){
+	private Tweet mapTotweet(Tweet tweet,String id){
 		log.info("Entering mapTotweet service method");
 		log.info("tweet :{}"+tweet.toString());
+		tweet.setHasLiked(false);
 		for(TweetReply reply : tweet.getTweetReply())
 				reply.setTweet(null);
-		for(TweetLikes reply : tweet.getTweetLikes())
-			reply.setTweet(null);
+		for(TweetLikes likes : tweet.getTweetLikes()) {
+			likes.setTweet(null);
+			if(likes.getUserId().equals(id)) {
+				tweet.setHasLiked(true);
+			}
+		}
 		log.info("Exiting mapTotweet service method");
 		return tweet;
 	}
-	private List<Tweet> convert(List<Tweet> initialList){
+	private List<Tweet> convert(List<Tweet> initialList,String id){
 		log.info("Entering convert service method");
-		List<Tweet> finalList=new ArrayList<>(initialList.size());
+		List<Tweet> finalList=new ArrayList<>();
 		for(Tweet tweet:initialList) {
 			log.info("tweet :{}"+tweet.toString());
-			finalList.add(mapTotweet(tweet));
+			finalList.add(mapTotweet(tweet,id));
 		}
 		log.info("Entering convert service method");
 		return finalList;
