@@ -94,8 +94,7 @@ public class TweetsServiceImpl implements TweetsService {
 		    }
 		});
 		log.info("Exiting addTweet service method");*/
-		tweetsDao.save(tweet);
-		return tweet;
+		return tweetsDao.save(tweet);
 		
 	}
 
